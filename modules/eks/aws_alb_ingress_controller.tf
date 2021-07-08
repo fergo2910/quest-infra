@@ -173,9 +173,6 @@ data "aws_iam_policy_document" "ingress_controller_trust_policy" {
         local.addon_config["aws-alb-ingress-controller"].enabled ? (
           local.addon_fq_service_account_names["aws-alb-ingress-controller"]
         ) : "",
-        local.addon_config["nginx-ingress-controller"].enabled ? (
-          local.addon_fq_service_account_names["nginx-ingress-controller"]
-        ) : ""
       ])
     }
   }

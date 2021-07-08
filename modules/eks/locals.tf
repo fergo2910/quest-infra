@@ -42,10 +42,10 @@ USERDATA
 }
 
 locals {
-  aws_default_profile = "teamup-${terraform.workspace}"
+  aws_default_profile = "rearc-${terraform.workspace}"
   aws_profile         = var.aws_profile != "" ? var.aws_profile : local.aws_default_profile
 
-  default_kube_config = "${path.module}/.kube/config_teamup-${terraform.workspace}"
+  default_kube_config = "${path.module}/.kube/config_rearc-${terraform.workspace}"
   kube_config         = var.kube_config != "" ? var.kube_config : local.default_kube_config
 }
 
@@ -115,18 +115,6 @@ locals {
       set_sensitive_values = {}
       force_update         = false
     },
-    aws-load-balancer-controller = {
-      repository           = "https://aws.github.io/eks-charts"
-      chart_name           = "aws-load-balancer-controller"
-      chart_version        = "1.0.8"
-      release_name         = "aws-load-balancer-controller"
-      namespace            = "ingress"
-      values_template_file = file("${path.module}/helm_values/aws-load-balancer-controller/values.yaml.tpl")
-      values               = ["${path.module}/helm_values/aws-load-balancer-controller/values.yaml", "${path.module}/helm_values/aws-load-balancer-controller/${terraform.workspace}/values.yaml"]
-      set_values           = {}
-      set_sensitive_values = {}
-      force_update         = false
-    }
     aws-node-termination-handler = {
       repository           = "https://aws.github.io/eks-charts"
       chart_name           = "aws-node-termination-handler"
@@ -134,18 +122,6 @@ locals {
       release_name         = "aws-node-termination-handler"
       namespace            = "kube-system"
       values_template_file = file("${path.module}/helm_values/aws-node-termination-handler/values.yaml.tpl")
-      values               = []
-      set_values           = {}
-      set_sensitive_values = {}
-      force_update         = false
-    },
-    nginx-ingress-controller = {
-      repository           = "https://charts.helm.sh/stable"
-      chart_name           = "nginx-ingress"
-      chart_version        = "1.41.3"
-      release_name         = "nginx-ingress"
-      namespace            = "ingress"
-      values_template_file = file("${path.module}/helm_values/nginx-ingress-controller/values.yaml.tpl")
       values               = []
       set_values           = {}
       set_sensitive_values = {}
@@ -163,18 +139,6 @@ locals {
       set_sensitive_values = {}
       force_update         = false
     },
-    aws-container-insights = {
-      repository           = ""
-      chart_name           = "${path.module}/helm_charts/aws-container-insights"
-      chart_version        = "0.1.0"
-      release_name         = "aws-container-insights"
-      namespace            = "amazon-cloudwatch"
-      values_template_file = file("${path.module}/helm_values/aws-container-insights/values.yaml.tpl")
-      values               = []
-      set_values           = {}
-      set_sensitive_values = {}
-      force_update         = false
-    }
   }
 
   addon_default_options = {
@@ -193,14 +157,6 @@ locals {
       helm_release = merge(
         local.addon_default_helm_releases["aws-alb-ingress-controller"],
         lookup(var.addon_helm_release_params, "aws-alb-ingress-controller", {})
-      )
-    },
-    aws-load-balancer-controller = {
-      enabled = contains(var.addons, "aws-load-balancer-controller"),
-      options = {}
-      helm_release = merge(
-        local.addon_default_helm_releases["aws-load-balancer-controller"],
-        lookup(var.addon_helm_release_params, "aws-load-balancer-controller", {})
       )
     },
     aws-node-termination-handler = {
@@ -249,14 +205,6 @@ locals {
         lookup(var.addon_helm_release_params, "metrics-server", {})
       )
     },
-    nginx-ingress-controller = {
-      enabled = contains(var.addons, "nginx-ingress-controller"),
-      options = {}
-      helm_release = merge(
-        local.addon_default_helm_releases["nginx-ingress-controller"],
-        lookup(var.addon_helm_release_params, "nginx-ingress-controller", {})
-      )
-    },
     kubernetes-external-secrets = {
       enabled = contains(var.addons, "kubernetes-external-secrets"),
       options = {}
@@ -265,14 +213,6 @@ locals {
         lookup(var.addon_helm_release_params, "kubernetes-external-secrets", {})
       )
     },
-    aws-container-insights = {
-      enabled = contains(var.addons, "aws-container-insights"),
-      options = {}
-      helm_release = merge(
-        local.addon_default_helm_releases["aws-container-insights"],
-        lookup(var.addon_helm_release_params, "aws-container-insights", {})
-      )
-    }
   }
 
   addon_enabled_helm_releases = { for k, v in local.addon_config : k => v.helm_release if v.enabled }
@@ -293,12 +233,9 @@ locals {
     external-dns                 = local.addon_config["external-dns"].enabled && var.enable_irsa,
     metrics-server               = false
     cluster-autoscaler           = local.addon_config["cluster-autoscaler"].enabled && var.enable_irsa,
-    ingress-controller           = (local.addon_config["aws-alb-ingress-controller"].enabled || local.addon_config["nginx-ingress-controller"].enabled) && var.enable_irsa,
-    aws-load-balancer-controller = local.addon_config["aws-load-balancer-controller"].enabled && var.enable_irsa,
+    ingress-controller           = local.addon_config["aws-alb-ingress-controller"].enabled && var.enable_irsa,
     aws-node-termination-handler = local.addon_config["aws-node-termination-handler"].enabled && var.enable_irsa,
-    nginx-ingress-controller     = local.addon_config["nginx-ingress-controller"].enabled && var.enable_irsa,
     kubernetes-external-secrets  = local.addon_config["kubernetes-external-secrets"].enabled && var.enable_irsa,
-    aws-container-insights       = local.addon_config["aws-container-insights"].enabled && var.enable_irsa
   }
 
   addon_create_policies = {
@@ -307,11 +244,9 @@ locals {
     external-dns_cross-account   = local.addon_config["external-dns"].enabled && length(local.addon_config["external-dns"].options.cross_account_access_role_arns) > 0
     metrics-server               = false
     cluster-autoscaler           = local.addon_config["cluster-autoscaler"].enabled
-    ingress-controller           = local.addon_config["aws-alb-ingress-controller"].enabled || local.addon_config["nginx-ingress-controller"].enabled || local.addon_config["aws-load-balancer-controller"].enabled
-    ingress-controller-upgrade   = local.addon_config["aws-load-balancer-controller"].enabled
+    ingress-controller           = local.addon_config["aws-alb-ingress-controller"].enabled
     aws-node-termination-handler = local.addon_config["aws-node-termination-handler"].enabled
     kubernetes-external-secrets  = local.addon_config["kubernetes-external-secrets"].enabled
-    aws-container-insights       = local.addon_config["aws-container-insights"].enabled
   }
 
   addon_attach_policies_to_irsa = {
@@ -321,9 +256,8 @@ locals {
     cluster-autoscaler           = local.addon_create_policies["cluster-autoscaler"] && var.enable_irsa,
     aws-node-termination-handler = local.addon_create_policies["aws-node-termination-handler"] && var.enable_irsa,
     ingress-controller           = local.addon_create_policies["ingress-controller"] && var.enable_irsa
-    ingress-controller-upgrade   = local.addon_create_policies["ingress-controller-upgrade"] && var.enable_irsa
+    ingress-controller-upgrade   = var.enable_irsa
     kubernetes-external-secrets  = local.addon_create_policies["kubernetes-external-secrets"] && var.enable_irsa
-    aws-container-insights       = local.addon_create_policies["aws-container-insights"] && var.enable_irsa
   }
 
   addon_attach_policies_to_worker_role = {
@@ -333,9 +267,8 @@ locals {
     cluster-autoscaler           = local.addon_create_policies["cluster-autoscaler"] && !var.enable_irsa,
     aws-node-termination-handler = local.addon_create_policies["aws-node-termination-handler"] && !var.enable_irsa,
     ingress-controller           = local.addon_create_policies["ingress-controller"] && !var.enable_irsa
-    ingress-controller-upgrade   = local.addon_create_policies["ingress-controller-upgrade"] && !var.enable_irsa
+    ingress-controller-upgrade   = !var.enable_irsa
     kubernetes-external-secrets  = local.addon_create_policies["kubernetes-external-secrets"] && !var.enable_irsa
-    aws-container-insights       = local.addon_create_policies["aws-container-insights"] && !var.enable_irsa
   }
 
   addon_role_arns = {
@@ -344,24 +277,18 @@ locals {
     metrics-server               = ""
     cluster-autoscaler           = var.enable_irsa && local.addon_config["cluster-autoscaler"].enabled ? aws_iam_role.cluster_autoscaler_role[0].arn : ""
     aws-alb-ingress-controller   = var.enable_irsa && local.addon_config["aws-alb-ingress-controller"].enabled ? aws_iam_role.ingress_controller_role[0].arn : ""
-    aws-load-balancer-controller = var.enable_irsa && local.addon_config["aws-load-balancer-controller"].enabled ? aws_iam_role.aws_load_balancer_controller_role[0].arn : ""
     aws-node-termination-handler = ""
-    nginx-ingress-controller     = var.enable_irsa && local.addon_config["nginx-ingress-controller"].enabled ? aws_iam_role.ingress_controller_role[0].arn : ""
     kubernetes-external-secrets  = var.enable_irsa && local.addon_config["kubernetes-external-secrets"].enabled ? aws_iam_role.kubernetes_external_secrets_role[0].arn : ""
-    aws-container-insights       = var.enable_irsa && local.addon_config["aws-container-insights"].enabled ? aws_iam_role.aws_container_insights_role[0].arn : ""
   }
 
   addon_fq_service_account_names = {
     aws-alb-ingress-controller   = "system:serviceaccount:${local.addon_config["aws-alb-ingress-controller"].helm_release.namespace}:${local.addon_config["aws-alb-ingress-controller"].helm_release.release_name}"
-    aws-load-balancer-controller = "system:serviceaccount:${local.addon_config["aws-load-balancer-controller"].helm_release.namespace}:${local.addon_config["aws-load-balancer-controller"].helm_release.release_name}"
     external-dns                 = "system:serviceaccount:${local.addon_config["external-dns"].helm_release.namespace}:${local.addon_config["external-dns"].helm_release.release_name}",
     external-dns-private         = "system:serviceaccount:${local.addon_config["external-dns-private"].helm_release.namespace}:${local.addon_config["external-dns-private"].helm_release.release_name}",
     metrics-server               = "system:serviceaccount:${local.addon_config["metrics-server"].helm_release.namespace}:${local.addon_config["metrics-server"].helm_release.release_name}"
     cluster-autoscaler           = "system:serviceaccount:${local.addon_config["cluster-autoscaler"].helm_release.namespace}:${local.addon_config["cluster-autoscaler"].helm_release.release_name}",
     aws-node-termination-handler = "system:serviceaccount:${local.addon_config["aws-node-termination-handler"].helm_release.namespace}:${local.addon_config["aws-node-termination-handler"].helm_release.release_name}",
-    nginx-ingress-controller     = "system:serviceaccount:${local.addon_config["nginx-ingress-controller"].helm_release.namespace}:${local.addon_config["nginx-ingress-controller"].helm_release.release_name}",
     kubernetes-external-secrets  = "system:serviceaccount:${local.addon_config["kubernetes-external-secrets"].helm_release.namespace}:${local.addon_config["kubernetes-external-secrets"].helm_release.release_name}",
-    aws-container-insights       = "system:serviceaccount:${local.addon_config["aws-container-insights"].helm_release.namespace}:${local.addon_config["aws-container-insights"].helm_release.release_name}"
   }
 
   cluster_autoscaler_enabled         = local.addon_config["cluster-autoscaler"].enabled

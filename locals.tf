@@ -75,23 +75,23 @@ locals {
       min_size                                 = 1
       desired_capacity                         = 2
       max_size                                 = 6
-      override_instance_types                  = ["t2.micro"] # Using spot we need to extend our options
+      override_instance_types                  = ["m5a.large"] # Using spot we need to extend our options
       node_labels                              = "node-type=stable"
       on_demand_base_capacity                  = 1
       on_demand_percentage_above_base_capacity = 50
     },
     prod = {
       name                                     = "stable"
-      min_size                                 = 3
-      desired_capacity                         = 3
-      max_size                                 = 10
-      override_instance_types                  = ["t2.micro"] # Using spot we need to extend our options
+      min_size                                 = 2
+      desired_capacity                         = 2
+      max_size                                 = 5
+      override_instance_types                  = ["m5a.large"] # Using spot we need to extend our options
       node_labels                              = "node-type=stable"
       on_demand_base_capacity                  = 1
       on_demand_percentage_above_base_capacity = 50
     },
   }
-  spot_mixed_instance_types = ["t2.micro"]
+  spot_mixed_instance_types = ["m5a.large"]
 
   # --------------------
   # EKS/Kubernetes Configuration

@@ -4,7 +4,7 @@
 locals {
   cluster_autoscaler_base_tags = {
     "k8s.io/cluster-autoscaler/enabled"                   = "true"
-    "k8s.io/cluster-autoscaler/teamup-${var.environment}" = "true"
+    "k8s.io/cluster-autoscaler/rearc-${var.environment}" = "true"
   }
 
   cluster_autoscaler_mixed_label_tags = [for ng in var.mixed_workers_configuration :
