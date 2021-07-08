@@ -1,13 +1,13 @@
 output "rbac_admin" {
-  value = aws_iam_role.k8s_admins_access.arn
+  value = aws_iam_role.k8s_admins_role.arn
 }
 
 output "rbac_readonly" {
-  value = aws_iam_role.k8s_readonly_access.arn
+  value = aws_iam_role.k8s_readonly_role.arn
 }
 
 output "rbac_poweruser" {
-  value = aws_iam_role.k8s_poweruser_access.arn
+  value = aws_iam_role.k8s_poweruser_role.arn
 }
 
 output "circle-ci-user-arn" {

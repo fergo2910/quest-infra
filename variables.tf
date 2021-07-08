@@ -47,3 +47,7 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "additional_public_access_cidrs" {
+  type    = list(string)
+  default = []
+}

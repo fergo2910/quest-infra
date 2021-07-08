@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 data "aws_iam_policy_document" "ssm_access" {
   policy_id = "SSM_access_from_cicd_${terraform.workspace}"
   version   = "2012-10-17"

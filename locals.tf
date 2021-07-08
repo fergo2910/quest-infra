@@ -11,6 +11,16 @@ locals {
   }
 
   # --------------------
+  # ECR repos
+  # --------------------
+  repos = [
+    {
+      name       = "rearc-quest"
+      mutable    = true
+      image_scan = false
+    },
+  ]
+  # --------------------
   # EKS Variables
   # --------------------
   cluster_name = "${var.cluster_name}-${terraform.workspace}"
@@ -116,7 +126,7 @@ locals {
     "aws-alb-ingress-controller",
     "kubernetes-external-secrets",
     "cluster-autoscaler",
-    "external-dns",
+    # "external-dns",
     "metrics-server",
   ]
   k8s_addon_helm_release_params = {
@@ -137,12 +147,12 @@ locals {
         "env.AWS_REGION" : data.aws_region.current.name
       }
     },
-    external-dns = {
-      set_values = {
-        "domainFilters[0]" : module.internal_domain.domain_name
-        "awsRegion" : data.aws_region.current.name
-      }
-    },
+    # external-dns = {
+    #   set_values = {
+    #     "domainFilters[0]" : module.internal_domain.domain_name
+    #     "awsRegion" : data.aws_region.current.name
+    #   }
+    # },
     cluster-autoscaler = {
       values = [
         file("${path.cwd}/helm_values/cluster-autoscaler/values.yaml"),
