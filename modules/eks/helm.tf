@@ -15,9 +15,11 @@ data "template_file" "addon_release_values" {
     aws_eks_cluster.masters,
     aws_iam_role.aws_vpc_cni_role,
     aws_iam_role.ingress_controller_role,
+    aws_iam_role.aws_load_balancer_controller_role,
     aws_iam_role.cluster_autoscaler_role,
     aws_iam_role.external_dns_role,
     aws_iam_role.kubernetes_external_secrets_role,
+    aws_iam_role.aws_container_insights_role
   ]
 }
 

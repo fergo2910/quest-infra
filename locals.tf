@@ -15,7 +15,7 @@ locals {
   # --------------------
   repos = [
     {
-      name       = "rearc-quest"
+      name       = "quest"
       mutable    = true
       image_scan = false
     },
@@ -108,7 +108,7 @@ locals {
   }
   pipeline_cluster_role = try(local.pipeline_cluster_role_map[terraform.workspace], "")
   # EKS Namespaces
-  k8s_application_namespace = "rearc"
+  k8s_application_namespace = "quest"
   k8s_additional_namespaces = {
     dev  = [local.k8s_application_namespace]
     prod = [local.k8s_application_namespace]
@@ -116,9 +116,9 @@ locals {
   k8s_helm_releases = {
   }
   k8s_application_irsa_config = {
-    rearc-app = {
+    quest-app = {
       policy_arns               = []
-      service_account_name      = "rearc-app"
+      service_account_name      = "quest-app"
       service_account_namespace = local.k8s_application_namespace
     },
   }
@@ -126,8 +126,9 @@ locals {
     "aws-alb-ingress-controller",
     "kubernetes-external-secrets",
     "cluster-autoscaler",
-    # "external-dns",
+    "external-dns",
     "metrics-server",
+    "aws-container-insights",
   ]
   k8s_addon_helm_release_params = {
     aws-alb-ingress-controller = {
@@ -147,12 +148,12 @@ locals {
         "env.AWS_REGION" : data.aws_region.current.name
       }
     },
-    # external-dns = {
-    #   set_values = {
-    #     "domainFilters[0]" : module.internal_domain.domain_name
-    #     "awsRegion" : data.aws_region.current.name
-    #   }
-    # },
+    external-dns = {
+      set_values = {
+        "domainFilters[0]" : module.domain.domain_name
+        "awsRegion" : data.aws_region.current.name
+      }
+    },
     cluster-autoscaler = {
       values = [
         file("${path.cwd}/helm_values/cluster-autoscaler/values.yaml"),
@@ -161,6 +162,16 @@ locals {
       set_values = {
         "awsRegion" : data.aws_region.current.name,
         "autoDiscovery.clusterName" : local.cluster_name
+      }
+    },
+    aws-container-insights = {
+      values = [
+        file("${path.cwd}/helm_values/aws-container-insights/values.yaml"),
+        file("${path.cwd}/helm_values/aws-container-insights/${terraform.workspace}/values.yaml")
+      ]
+      set_values = {
+        "cluster.name" : local.cluster_name,
+        "cluster.region" : data.aws_region.current.name,
       }
     },
   }
@@ -182,7 +193,7 @@ locals {
   map_default_users = [
     {
       user_arn = module.iam.circle-ci-user-arn
-      username = "rearc:${module.iam.circle-ci-user-name}"
+      username = "quest:${module.iam.circle-ci-user-name}"
       group    = "system:masters" # cluster-admin
     }
   ]

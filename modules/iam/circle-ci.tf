@@ -77,7 +77,7 @@ data "aws_iam_policy_document" "ecr_access" {
       "ecr:GetRepositoryPolicy",
       "ecr:PutReplicationConfiguration"
     ]
-    resources = ["arn:aws:ecr:us-east-1:${data.aws_caller_identity.current.account_id}:repository/rearc-quest"]
+    resources = ["arn:aws:ecr:us-east-1:${data.aws_caller_identity.current.account_id}:repository/quest"]
   }
   statement {
     sid    = "ecrAccessAllResources"

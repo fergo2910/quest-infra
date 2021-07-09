@@ -54,6 +54,14 @@ module "ecr_repo" {
   resource_based_policy = false
 }
 
+module "domain" {
+  source = "./modules/route53"
+
+  create_hosted_zone = var.create_domain
+  domain_name        = var.domain_name
+  environment        = terraform.workspace
+}
+
 module "eks" {
   source = "./modules/eks"
 
@@ -63,8 +71,8 @@ module "eks" {
   vpc_cidr                        = module.vpc.vpc_cidr
   public_subnets_ids              = module.vpc.public_subnet_ids
   private_subnets_ids             = module.vpc.private_subnet_ids
-  endpoint_private_access         = false
   endpoint_public_access          = true
+  endpoint_private_access         = false
   additional_public_access_cidrs  = local.eks_whitelist_ip
   additional_private_access_cidrs = var.private_subnet_cidrs
   cluster_log_types               = local.cluster_log_types[terraform.workspace]

@@ -132,11 +132,30 @@ resource "aws_security_group_rule" "withelist_inbound_alb_withelist_sg_https" {
 }
 
 ##  ALB withelist SG rule Allow inbound traffic ALB to withelisted IP's HTTP
-resource "aws_security_group_rule" "withelist_inbound_alb_withelist_sg_http" {
+resource "aws_security_group_rule" "withelist_inbound_all_alb_withelist_sg_http" {
   type              = "ingress"
   protocol          = "tcp"
   from_port         = 80
   to_port           = 80
   cidr_blocks       = var.additional_public_access_cidrs
+  security_group_id = aws_security_group.alb_withelist_sg.id
+}
+
+resource "aws_security_group_rule" "withelist_inbound_all_alb_withelist_sg_https" {
+  type              = "ingress"
+  protocol          = "tcp"
+  from_port         = 443
+  to_port           = 443
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.alb_withelist_sg.id
+}
+
+##  ALB withelist SG rule Allow inbound traffic ALB to withelisted IP's HTTP
+resource "aws_security_group_rule" "withelist_inbound_alb_withelist_sg_http" {
+  type              = "ingress"
+  protocol          = "tcp"
+  from_port         = 80
+  to_port           = 80
+  cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = aws_security_group.alb_withelist_sg.id
 }

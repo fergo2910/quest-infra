@@ -18,7 +18,11 @@ allow_inbound_traffic = [
 single_nat_gw = true #false for high availability
 
 # EKS
-cluster_name = "rearc"
+cluster_name = "quest"
 
 # All whitelisted IP's should be defined here. 
 additional_public_access_cidrs = ["190.104.116.200/32"]
+
+##### Route53
+domain_name   = "quest.com"
+create_domain = true

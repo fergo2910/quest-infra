@@ -1,0 +1,11 @@
+# Log agent (fluentd-cloudwatch) configuration
+logAgent:
+  configFiles: "files/dev/*.conf"
+  image:
+    repository: "fluent/fluentd-kubernetes-daemonset"
+    tag: "v1.7.3-debian-cloudwatch-1.0"
+
+# Metric agent (cloudwatch-agent) configuration
+
+metricAgent:
+  configFiles: "files/dev/cloudwatch-agent.json"

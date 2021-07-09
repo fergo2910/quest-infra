@@ -51,3 +51,14 @@ variable "additional_public_access_cidrs" {
   type    = list(string)
   default = []
 }
+
+##### Route53
+variable "domain_name" {
+  description = "A domain name to use in the account"
+  type        = string
+}
+variable "create_domain" {
+  description = "If a domain should be created"
+  type        = bool
+  default     = false
+}
