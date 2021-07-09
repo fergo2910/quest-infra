@@ -20,7 +20,7 @@ resource "aws_eks_cluster" "masters" {
     security_group_ids      = [aws_security_group.k8s_masters_sg.id]
     endpoint_private_access = var.endpoint_private_access
     endpoint_public_access  = var.endpoint_public_access
-    public_access_cidrs     = var.additional_public_access_cidrs
+    # public_access_cidrs     = var.additional_public_access_cidrs
   }
 
   #Enabling control plane logging
