@@ -71,3 +71,57 @@ output "elastic_ips_cidrs" {
   description = "List of Elastic IPs"
   value       = [for ip in aws_eip.elastic_ip.*.public_ip : "${ip}/32"]
 }
+
+output "transit_gw_arn" {
+  description = "ARN of the Transit Gateway provisioned"
+  value       = join(",", aws_ec2_transit_gateway.this.*.arn)
+}
+
+output "transit_gw_id" {
+  description = "ID of the Transit Gateway provisioned"
+  value       = join(",", aws_ec2_transit_gateway.this.*.id)
+}
+
+output "transit_gw_owner_id" {
+  description = "Owner ID of the Transit Gateway provisioned"
+  value       = join(",", aws_ec2_transit_gateway.this.*.owner_id)
+}
+
+output "transit_gw_rt_id" {
+  description = "ID of the Transit Gateway Route Table provisioned"
+  value = var.default_route_table_association == "enable" ? join(
+    ",",
+    aws_ec2_transit_gateway.this.*.association_default_route_table_id,
+  ) : join(",", aws_ec2_transit_gateway_route_table.initial.*.id)
+}
+
+output "transit_gw_assocation_rt_id" {
+  description = "ID of the Transit Gateway Association Route Table"
+  value = var.default_route_table_association == "enable" ? join(
+    ",",
+    aws_ec2_transit_gateway.this.*.association_default_route_table_id,
+  ) : join(",", aws_ec2_transit_gateway_route_table.initial.*.id)
+}
+
+output "transit_gw_propagation_rt_id" {
+  description = "ID of the Transit Gateway Propagation Route Table"
+  value = var.default_route_table_propagation == "enable" ? join(
+    ",",
+    aws_ec2_transit_gateway.this.*.propagation_default_route_table_id,
+  ) : join(",", aws_ec2_transit_gateway_route_table.initial.*.id)
+}
+
+output "transit_gw_share_arn" {
+  description = "ARN of the Transit Gateway RAM Share"
+  value       = join(",", aws_ram_resource_share.transitgw.*.id)
+}
+
+# The below two may be needed in the future, so keeping them around until after
+# the features for invitations and acceptance are done.
+#
+#output "transit_gw_association_default_route_table_id" {
+#  value = "${aws_ec2_transit_gateway.this.*.association_default_route_table_id}"
+#}
+#output "transit_gw_propogation_default_route_table_id" {
+#  value = "${aws_ec2_transit_gateway.this.*.propogation_default_route_table_id}"
+#}

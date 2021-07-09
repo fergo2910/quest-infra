@@ -16,6 +16,11 @@ variable "vpc_cidr" {
   description = "The CIDR range for the VPC"
 }
 
+variable "transit_gw_cidr" {
+  description = "The CIDR range for the overall transit gateway network"
+  default     = ""
+}
+
 variable "enable_dns_support" {
   description = "True if the DNS support is enabled in the VPC"
   default     = true
@@ -72,6 +77,81 @@ variable "single_nat_gw" {
 variable "enable_igw" {
   description = "True if you want an igw added to your public route table"
   default     = true
+}
+
+variable "use_transit_gw" {
+  description = "Use an existing transit gateway rather than creating standalone network objects."
+  default     = false
+}
+
+variable "share_transit_gw" {
+  description = "Share this transit gateway via AWS Resource Access Manager (RAM)"
+  default     = false
+}
+
+variable "transit_gw_id" {
+  description = "id of the transit gateway to associate with"
+  default     = ""
+}
+
+variable "transit_gw_arn" {
+  description = "arn of the transit gateway to associate with"
+  default     = ""
+}
+
+variable "transit_gw_rt_id" {
+  description = "id of the transit gateway route table"
+  default     = ""
+}
+
+variable "transit_gw_share_arn" {
+  description = "The arn of the AWS RAM Share Arn for the existing Transit Gateway"
+  default     = ""
+}
+
+variable "transit_gw_association_rt_id" {
+  description = "id of the transit gateway association route table"
+  default     = ""
+}
+
+variable "transit_gw_propagation_rt_id" {
+  description = "id of the transit gateway propagation route table"
+  default     = ""
+}
+
+variable "create_transit_gw" {
+  description = "Create a transit gateway and related routing objects"
+  default     = false
+}
+
+variable "remote_transit_gw" {
+  description = "Is the transit gateway we are connecting to in a remote account?"
+  default     = false
+}
+
+variable "default_route_table_association" {
+  description = "Whether resource attachments are automatically associated with the default association route table."
+  default     = "enable"
+}
+
+variable "default_route_table_propagation" {
+  description = "Whether resource attachments automatically propagate routes to the default propagation route table."
+  default     = "enable"
+}
+
+variable "description" {
+  description = "Description of the transit gateway."
+  default     = "Transit Gateway"
+}
+
+variable "auto_accept_shared_attachments" {
+  description = "Whether resource attachment requests are automatically accepted."
+  default     = "disable"
+}
+
+variable "vpn_ecmp_support" {
+  description = "Whether VPN Equal Cost Multipath Protocol support is enabled."
+  default     = "disable"
 }
 
 # -------------------------------------------------------------

@@ -172,7 +172,7 @@ resource "aws_route_table" "private" {
 }
 
 ###
-# Route table(s) for database subnets
+# Route table(s) for private subnets
 # ----------------------------------
 # This is rather variable, let me break it down:
 #       a) Create RT only if we have db subnets defined 
@@ -283,3 +283,265 @@ resource "aws_route" "igw_default_route" {
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.this[0].id
 }
+
+###
+# Transit Gateway
+# ---------------
+# Create a transit gateway if ${var.create_transit_gw} is true.  This should only 
+# be turned on in one place (typically associated with a shared/network VPC), and
+# results in a single transit gateway for the entire shared configuration, with all
+# other accounts/environments/VPCs being attached to this one transit gateway.
+###
+resource "aws_ec2_transit_gateway" "this" {
+  count                           = var.create_transit_gw ? 1 : 0
+  provider                        = aws
+  description                     = var.description
+  auto_accept_shared_attachments  = var.auto_accept_shared_attachments
+  default_route_table_association = var.default_route_table_association
+  default_route_table_propagation = var.default_route_table_propagation
+  dns_support                     = var.enable_dns_support ? "enable" : "disable"
+
+  tags = {
+    Name = "${var.environment}-transitgw"
+  }
+}
+
+###
+# Initial VPC transit gateway attachment
+# --------------
+# This transit gateway vpc attachment is intended to handle the initial vpc association to the transit
+# gateway, which uses local resource information to do the association, where additional vpc associations
+# use primarily values sourced from variables, instead.
+###
+
+resource "aws_ec2_transit_gateway_vpc_attachment" "initial" {
+  count                                           = var.create_transit_gw ? 1 : 0
+  provider                                        = aws
+  subnet_ids                                      = aws_subnet.private_subnets.*.id
+  transit_gateway_id                              = aws_ec2_transit_gateway.this[0].id
+  vpc_id                                          = aws_vpc.this.id
+  transit_gateway_default_route_table_association = var.default_route_table_association == "enable" ? true : false
+  transit_gateway_default_route_table_propagation = var.default_route_table_propagation == "enable" ? true : false
+
+  tags = {
+    Name = "${var.environment} transit gateway attachment"
+  }
+
+  depends_on = [aws_ec2_transit_gateway.this]
+}
+
+###
+# Transit Gateway Route Table
+# ---------------------------
+# When making the transit gateway, we have two choices - use the default transit gateway route table or
+# create additional route tables.  For our module, if you pass ${var.default_route_table_assocation) = "disable"
+# this triggers the below logic to make an explicit transit gateway route tables.  The alternate behavior is that
+# the transit gateway default route table is created by aws_ec2_transit_gateway_vpc_attachment.initial during that
+# initial attachment, therefore an explicit object is not needed as currently implemented.
+###
+resource "aws_ec2_transit_gateway_route_table" "initial" {
+  count              = var.create_transit_gw && var.default_route_table_association == "disable" ? 1 : 0
+  provider           = aws
+  transit_gateway_id = aws_ec2_transit_gateway.this[0].id
+
+  tags = {
+    Name = "${var.environment} transit gateway route table"
+  }
+
+  depends_on = [aws_ec2_transit_gateway.this]
+}
+
+resource "aws_ec2_transit_gateway_route_table_association" "initial" {
+  count                          = var.create_transit_gw && var.default_route_table_association == "disable" ? 1 : 0
+  provider                       = aws
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.initial[0].id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.initial[0].id
+}
+
+resource "aws_ec2_transit_gateway_route_table_propagation" "initial" {
+  count                          = var.create_transit_gw && var.default_route_table_propagation == "disable" && var.default_route_table_association == "disable" ? 1 : 0
+  provider                       = aws
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.initial[0].id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.initial[0].id
+}
+
+###
+# Additional VPC Transit Gateway attachment (Local Account)
+# -----------------------------------------
+# This transit gateway vpc attachment is intended to handle the addition of extra 
+# VPCs to the current transit gateway in the same account. We need to use a transit 
+# gateway id passed in via the ${var.transit_gw_id} variable.
+###
+
+resource "aws_ec2_transit_gateway_vpc_attachment" "extra" {
+  count                                           = var.use_transit_gw && false == var.remote_transit_gw ? 1 : 0
+  provider                                        = aws
+  subnet_ids                                      = aws_subnet.private_subnets.*.id
+  transit_gateway_id                              = var.transit_gw_id
+  vpc_id                                          = aws_vpc.this.id
+  transit_gateway_default_route_table_association = var.default_route_table_association == "enable" ? true : false
+  transit_gateway_default_route_table_propagation = var.default_route_table_propagation == "enable" ? true : false
+
+  tags = {
+    Name = "${var.environment} remote transit gateway attachment"
+  }
+
+  depends_on = [
+    aws_ec2_transit_gateway.this,
+    aws_subnet.private_db_subnets,
+    aws_subnet.private_subnets,
+    aws_subnet.private_db_subnets,
+  ]
+}
+
+##
+# Additional VPC Transit Gateway attachment (Remote AWS Account)
+# -----------------------------------------
+# This transit gateway vpc attachment is intended to handle the addition of extra 
+# VPCs to the current transit gateway in a remote account. We need to use a transit 
+# gateway id passed in via the ${var.transit_gw_id} variable, and a resource_share_arn
+# pulled from the AWS RAM share from the module that provisioned the transit gateway.
+##
+resource "aws_ec2_transit_gateway_vpc_attachment" "remote" {
+  count                                           = var.use_transit_gw && var.remote_transit_gw ? 1 : 0
+  provider                                        = aws
+  subnet_ids                                      = aws_subnet.private_subnets.*.id
+  transit_gateway_id                              = var.transit_gw_id
+  vpc_id                                          = aws_vpc.this.id
+  transit_gateway_default_route_table_association = var.default_route_table_association == "enable" ? true : false
+  transit_gateway_default_route_table_propagation = var.default_route_table_propagation == "enable" ? true : false
+
+  tags = {
+    Name = "${var.environment} remote transit gateway attachment"
+  }
+  depends_on = [aws_ram_principal_association.transitgw]
+}
+
+resource "aws_ec2_transit_gateway_vpc_attachment_accepter" "remote" {
+  count                         = var.use_transit_gw && var.remote_transit_gw ? 1 : 0
+  provider                      = aws.transitgw
+  transit_gateway_attachment_id = aws_ec2_transit_gateway_vpc_attachment.remote[0].id
+
+  tags = {
+    Name = "${var.environment} transit gateway accepter"
+  }
+  depends_on = [aws_ec2_transit_gateway_vpc_attachment.remote]
+}
+
+resource "aws_ec2_transit_gateway_route_table_association" "remote" {
+  count                          = var.use_transit_gw && var.default_route_table_association == "disable" ? 1 : 0
+  provider                       = aws
+  transit_gateway_attachment_id  = var.transit_gw_id
+  transit_gateway_route_table_id = var.transit_gw_rt_id
+
+  depends_on = [aws_ec2_transit_gateway_vpc_attachment_accepter.remote]
+}
+
+resource "aws_ec2_transit_gateway_route_table_propagation" "remote" {
+  count                          = var.use_transit_gw && var.default_route_table_propagation == "disable" ? 1 : 0
+  provider                       = aws
+  transit_gateway_attachment_id  = var.transit_gw_id
+  transit_gateway_route_table_id = var.transit_gw_rt_id
+}
+
+## Routes related to Transit Gateway configuration
+resource "aws_ec2_transit_gateway_route" "default_route_transit_gateway_default_rt" {
+  count                          = var.create_transit_gw && var.enable_igw && var.default_route_table_propagation == "enable" ? 1 : 0
+  provider                       = aws
+  transit_gateway_route_table_id = aws_ec2_transit_gateway.this[0].propagation_default_route_table_id
+  destination_cidr_block         = "0.0.0.0/0"
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.initial[0].id
+}
+
+resource "aws_ec2_transit_gateway_route" "default_route_transit_gateway_rt" {
+  count                          = var.create_transit_gw && var.enable_igw && var.default_route_table_propagation == "disable" ? 1 : 0
+  provider                       = aws
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.initial[0].id
+  destination_cidr_block         = "0.0.0.0/0"
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.initial[0].id
+}
+
+resource "aws_route" "transit_gw_route_pub_local" {
+  count                  = var.use_transit_gw && false == var.remote_transit_gw && length(var.public_subnet_cidrs) > 0 ? 1 : 0
+  provider               = aws
+  route_table_id         = aws_route_table.public[0].id
+  destination_cidr_block = var.transit_gw_cidr
+  transit_gateway_id     = var.transit_gw_id
+}
+
+resource "aws_route" "transit_gw_route_pub_remote" {
+  count                  = var.use_transit_gw && var.remote_transit_gw && length(var.public_subnet_cidrs) > 0 ? 1 : 0
+  provider               = aws
+  route_table_id         = aws_route_table.public[0].id
+  destination_cidr_block = var.transit_gw_cidr
+  transit_gateway_id     = var.transit_gw_id
+  depends_on             = [aws_ec2_transit_gateway_vpc_attachment_accepter.remote]
+}
+
+resource "aws_route" "transit_gw_hub_route_pub" {
+  count                  = var.create_transit_gw && length(var.public_subnet_cidrs) > 0 ? 1 : 0
+  provider               = aws
+  route_table_id         = aws_route_table.public[0].id
+  destination_cidr_block = var.transit_gw_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.this[0].id
+}
+
+resource "aws_route" "transit_gw_default_route_pub_local" {
+  count                  = var.use_transit_gw && false == var.remote_transit_gw && length(var.public_subnet_cidrs) > 0 && false == var.enable_igw ? 1 : 0
+  provider               = aws
+  route_table_id         = aws_route_table.public[0].id
+  destination_cidr_block = "0.0.0.0/0"
+  transit_gateway_id     = var.transit_gw_id
+}
+
+resource "aws_route" "transit_gw_default_route_pub_remote" {
+  count                  = var.use_transit_gw && var.remote_transit_gw && length(var.public_subnet_cidrs) > 0 && false == var.enable_igw ? 1 : 0
+  provider               = aws
+  route_table_id         = aws_route_table.public[0].id
+  destination_cidr_block = "0.0.0.0/0"
+  transit_gateway_id     = var.transit_gw_id
+  depends_on             = [aws_ec2_transit_gateway_vpc_attachment_accepter.remote]
+}
+
+resource "aws_route" "transit_gw_hub_route_priv" {
+  count                  = var.create_transit_gw && length(var.private_subnet_cidrs) > 0 ? local.nat_gw_count : 0
+  provider               = aws
+  route_table_id         = element(aws_route_table.private.*.id, count.index)
+  destination_cidr_block = var.transit_gw_cidr
+  transit_gateway_id     = aws_ec2_transit_gateway.this[0].id
+}
+
+resource "aws_route" "transit_gw_route_priv_local" {
+  count                  = var.use_transit_gw && false == var.remote_transit_gw && length(var.private_subnet_cidrs) > 0 ? local.nat_gw_count : 0
+  provider               = aws
+  route_table_id         = element(aws_route_table.private.*.id, count.index)
+  destination_cidr_block = var.transit_gw_cidr
+  transit_gateway_id     = var.transit_gw_id
+}
+
+resource "aws_route" "transit_gw_route_priv_remote" {
+  count                  = var.use_transit_gw && var.remote_transit_gw && length(var.private_subnet_cidrs) > 0 ? local.nat_gw_count : 0
+  provider               = aws
+  route_table_id         = element(aws_route_table.private.*.id, count.index)
+  destination_cidr_block = var.transit_gw_cidr
+  transit_gateway_id     = var.transit_gw_id
+  depends_on             = [aws_ec2_transit_gateway_vpc_attachment_accepter.remote]
+}
+
+resource "aws_route" "transit_gw_default_route_priv_local" {
+  count                  = var.use_transit_gw && false == var.remote_transit_gw && false == var.enable_nat_gw && length(var.private_subnet_cidrs) > 0 ? local.nat_gw_count : 0
+  provider               = aws
+  route_table_id         = element(aws_route_table.private.*.id, count.index)
+  destination_cidr_block = "0.0.0.0/0"
+  transit_gateway_id     = var.transit_gw_id
+}
+
+resource "aws_route" "transit_gw_default_route_priv_remote" {
+  count                  = var.use_transit_gw && var.remote_transit_gw && false == var.enable_nat_gw && length(var.private_subnet_cidrs) > 0 ? local.nat_gw_count : 0
+  provider               = aws
+  route_table_id         = element(aws_route_table.private.*.id, count.index)
+  destination_cidr_block = "0.0.0.0/0"
+  transit_gateway_id     = var.transit_gw_id
+  depends_on             = [aws_ec2_transit_gateway_vpc_attachment_accepter.remote]
+}
+

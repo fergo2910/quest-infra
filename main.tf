@@ -23,7 +23,7 @@ module "vpc" {
   # Tagging
   tags = {
     environment = terraform.workspace
-    App         = "rearc-quest-${terraform.workspace}"
+    App         = "quest-${terraform.workspace}"
   }
 
   # Tags needed for EKS to identify public and private subnets

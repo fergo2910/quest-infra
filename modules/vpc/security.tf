@@ -140,3 +140,4 @@ resource "aws_network_acl_rule" "allow_inbound_icmp_public_subnet" {
   cidr_block     = "0.0.0.0/0"
   rule_action    = "allow"
 }
+

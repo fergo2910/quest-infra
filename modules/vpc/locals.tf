@@ -13,3 +13,4 @@ locals {
     aws_subnet.private_db_subnets.*.id,
   )
 }
+

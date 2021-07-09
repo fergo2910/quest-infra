@@ -14,6 +14,18 @@ allow_inbound_traffic = [
     to_port   = 3000
     source    = "0.0.0.0/0"
   },
+  {
+    protocol  = "tcp"
+    from_port = 443
+    to_port   = 443
+    source    = "0.0.0.0/0"
+  },
+  {
+    protocol  = "tcp"
+    from_port = 80
+    to_port   = 80
+    source    = "0.0.0.0/0"
+  },
 ]
 single_nat_gw = true #false for high availability
 

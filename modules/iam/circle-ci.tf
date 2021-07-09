@@ -12,8 +12,8 @@ data "aws_iam_policy_document" "ssm_access" {
       "ssm:GetParametersByPath",
     ]
     resources = [
-      "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${upper(terraform.workspace)}/REARC/*",
-      "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${upper(terraform.workspace)}/REARC/"
+      "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${upper(terraform.workspace)}/QUEST/*",
+      "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${upper(terraform.workspace)}/QUEST/"
     ]
   }
   statement {
@@ -99,7 +99,7 @@ data "aws_iam_policy_document" "eks_access" {
       "eks:DescribeCluster",
     ]
     resources = [
-      "arn:aws:eks:${var.region}:${data.aws_caller_identity.current.account_id}:cluster/rearc-${terraform.workspace}"
+      "arn:aws:eks:${var.region}:${data.aws_caller_identity.current.account_id}:cluster/quest-${terraform.workspace}"
     ]
   }
 }
@@ -114,14 +114,14 @@ resource "aws_iam_access_key" "circle_ci_access_keys" {
 }
 
 resource "aws_ssm_parameter" "circle_ci_access_key_id" {
-  name        = upper("/${terraform.workspace}/REARC/CIRCLE_CI_ACCESS_KEY")
+  name        = upper("/${terraform.workspace}/QUEST/CIRCLE_CI_ACCESS_KEY")
   description = "circle_ci access key id to be used by circle ci"
   type        = "SecureString"
   value       = aws_iam_access_key.circle_ci_access_keys.id
 }
 
 resource "aws_ssm_parameter" "circle_ci_secret_access_key_id" {
-  name        = upper("/${terraform.workspace}/REARC/CIRCLE_CI_SECRET_ACCESS_KEY")
+  name        = upper("/${terraform.workspace}/QUEST/CIRCLE_CI_SECRET_ACCESS_KEY")
   description = "circle_ci secret access key id to be used by circle ci"
   type        = "SecureString"
   value       = aws_iam_access_key.circle_ci_access_keys.secret
